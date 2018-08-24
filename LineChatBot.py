@@ -16,8 +16,8 @@ import BookOneWay
 app = Flask(__name__)
 
 #Token
-CHANNEL_ACCESS_TOKEN = "j9WRKW/hQUnU41BzR+jelVojAaJE8+LlgW4bxGcbP0DapaaXKlwVlLWrUmiIaQdhYF9No+vjod+dFnKNuVU86HtKem2wTwQOUeI8cSQK/wB4n6OoWtwqyXyhEWyEwKjuv3C6kpTaBjo0H0+poKPMtAdB04t89/1O/w1cDnyilFU="
-CHANNEL_SECRET = "2f6cee0483e0ad07aa33d422429ae5f5"
+CHANNEL_ACCESS_TOKEN = ''
+CHANNEL_SECRET = ''
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
