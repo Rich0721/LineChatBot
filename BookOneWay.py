@@ -1,6 +1,16 @@
+'''************************************************
+Autor: Rich
+Version: 2
+Date: 2018/08/22
+Second : 2018/08/24
+Describe: User can book station and date. Distinguish
+	confirm number which use machine learning's memory.
+	Book one-way-thickets. 
+************************************************'''
+
+
 import requests
 from selenium import webdriver
-from seleniumrequests import Chrome
 from bs4 import BeautifulSoup
 from selenium.webdriver.support.ui import Select
 from seleniumrequests import Chrome
@@ -48,9 +58,9 @@ def confirmNumber(fileName="check.jpg"):
 	print("confirmNumber start.")
 	LETTERSTR = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 	model = None
-	model5 = load_model("D:/專題/爬蟲/TrainCodeImage/Program/real_5.h5")
-	model6 = load_model("D:/專題/爬蟲/TrainCodeImage/Program/real_6.h5")
-	model56 = load_model("D:/專題/爬蟲/TrainCodeImage/Program/real_56.h5")
+	model5 = load_model5
+	model6 = load_model6
+	model56 = load_model56	
 	p56 = model56.predict(np.stack([np.array(Image.open(fileName))/255.0]))[0][0]
 	if p56 >0.5:
 		model = model6
@@ -65,8 +75,8 @@ def confirmNumber(fileName="check.jpg"):
 
 
 # Booking  
-def BookingOneWay(person_id="A1234567890",date=time.strftime("%Y/%m/%d",time.localtime()),train_no=0,\
-			startStation="台東",toStation="台東",ticketNumber=1):
+def BookingOneWay(person_id="A1234567890",date='',train_no=0,startStation="台東",toStation="台東",
+	ticketNumber=1):
 
 	print("Booking One Way start.")
 
@@ -106,9 +116,7 @@ def BookingOneWay(person_id="A1234567890",date=time.strftime("%Y/%m/%d",time.loc
 		location = driver.find_element_by_id('idRandomPic').location
 		driver.save_screenshot('tmp.png')
 		img = Image.open('tmp.png')
-		x,y = location['x'],location['y']
-		print(x,y)
-		#captcha = img.crop((62, 576, 62+250, 576+77))
+		captcha = img.crop((62, 576, 62+250, 576+77))
 		captcha.convert("RGB").save('check.jpg', 'JPEG')
 
 		answer = confirmNumber()
@@ -122,6 +130,7 @@ def BookingOneWay(person_id="A1234567890",date=time.strftime("%Y/%m/%d",time.loc
 			print(Number[0].text)
 		else:
 			print("訂票失敗")'''
+
 
 #BookingOneWay(train_no=113,\
 #			startStation="台中",toStation="高雄",ticketNumber=1)

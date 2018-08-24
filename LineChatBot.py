@@ -1,3 +1,11 @@
+'''************************************************
+Autor: Rich
+Version: 1
+Date: 2018/08/24
+Describe: Line chat-bot run. Reply question and check
+data is true or not. And then help user book thickets.
+Now, only book one-way thickets at train numbers.
+************************************************'''
 from flask import Flask, request, abort
 from linebot import (
 	LineBotApi, WebhookHandler)
@@ -16,8 +24,8 @@ import BookOneWay
 app = Flask(__name__)
 
 #Token
-CHANNEL_ACCESS_TOKEN = ''
-CHANNEL_SECRET = ''
+CHANNEL_ACCESS_TOKEN = ""
+CHANNEL_SECRET = ""
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
@@ -26,6 +34,8 @@ global station,bookDate
 station = {} # Train station data
 bookDate = {} # Can book date
 oneWayStep = 0  # Book one way tickets.
+
+global choice_train
 
 # Need user's data
 global identificationNumber
@@ -88,15 +98,30 @@ def handle_message(event):
     global endDate
     global thicketsNumber
     global trainNumber
+    global choice_train
 
     if ((event.message.text  == "Hi") or event.message.text == "你好"):
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=GreetingsMessage(step=1)))
+        line_bot_api.reply_message(event.reply_token, GreetingsMessage(step=1))
+        choice = 0
     if (("訂票" in event.message.text ) or ("訂車票" in event.message.text)):
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=GreetingsMessage(step=2)))
-    if (("車次單程票" in event.message.text) or (event.message.text == "A") or (event.message.text == "a")):
+        oneWayStep = 0
+        line_bot_api.reply_message(event.reply_token, GreetingsMessage(step=2))
+    
+
+    if (("車次" in event.message.text)):
+        choice_train = 1
+        line_bot_api.reply_message(event.reply_token, GreetingsMessage(step=3))
+    elif ('車種' in event.message.text):
+        choice_train = 2
+        line_bot_api.reply_message(event.reply_token, GreetingsMessage(step=3))
+
+
+    #This is book one-way-tickets at train numbers'
+
+    if (("單程票" in event.message.text) and (choice_train == 1)):
         oneWayStep = 1
         line_bot_api.reply_message(event.reply_token, setOneWayTextMessege(step=oneWayStep))
-    elif((oneWayStep >=1) and (oneWayStep <= 7)):
+    elif((oneWayStep >=1) and (oneWayStep < 7)):
         if (oneWayStep == 1):
             if checkData.checkDate(date=event.message.text,dateDict=bookDate):
                 oneWayStep = 2
@@ -126,7 +151,7 @@ def handle_message(event):
                 line_bot_api.reply_message(event.reply_token, TextSendMessage(text="起站別錯誤，請檢查名稱是否有錯字"))
                 oneWayStep = 4
         elif (oneWayStep == 5):
-            if ((checkData.checkStation(event.message.text,station)) and event.message.text != startStation):
+            if ((checkData.checkStation(event.message.text,station)) and (event.message.text != startStation)):
                 oneWayStep = 6
                 endStation = event.message.text
                 line_bot_api.reply_message(event.reply_token, setOneWayTextMessege(step=oneWayStep))
@@ -135,11 +160,16 @@ def handle_message(event):
                 oneWayStep = 5
         elif (oneWayStep == 6):
             if checkData.checkTicketsNumbers(int(event.message.text)):
-                oneWayStep = 7
+                oneWayStep = 0
                 thicketsNumber = event.message.text
-                line_bot_api.reply_message(event.reply_token, setOneWayTextMessege(step=oneWayStep))
+                line_bot_api.reply_message(event.reply_token, confrimBook())
             else:
                 line_bot_api.reply_message(event.reply_token, TextSendMessage(text="每次訂票的數量至多六張喔~"))
+    elif("確認無誤" in event.message.text):
+        line_bot_api.reply_message(event.reply_token,TextMessage(text="馬上幫您訂票"))
+    elif("輸入錯誤" in event.message.text):
+        oneWayStep = 1
+        line_bot_api.reply_message(event.reply_token,setOneWayTextMessege(oneWayStep))
     else:
         line_bot_api.reply_message(
         event.reply_token,
@@ -151,13 +181,36 @@ def handle_message(event):
 def GreetingsMessage(step=0):
     
     if step == 1:
-        return "你好，我是台鐵訂票機器人，並不是官方機器人，如害怕個資洩漏，請至台鐵官網自行訂票"
+        message = TextSendMessage(text="你好，我是台鐵訂票機器人，並不是官方機器人，如害怕個資洩漏，請至台鐵官網自行訂票")
     elif step == 2:
-        return '''請輸入下列選項號碼或關鍵字，將為您提供所需服務
-                A: 車次-單程票
-                B: 車種-單程票
-                C: 車次-來回票
-                D: 車種-來回票'''
+        message =TemplateSendMessage(
+            alt_text = "Confirm template",
+            template= ConfirmTemplate(
+                text="請選擇想要訂票的方式",
+            actions=[
+                PostbackTemplateAction(
+                    label='車次',
+                    text='車次',
+                    data='action=buy&itemid=1'),
+                MessageTemplateAction(
+                    label='車種',
+                    text='車種')
+                ]))
+    elif step == 3:
+        message =TemplateSendMessage(
+            alt_text = "Confirm template",
+            template= ConfirmTemplate(
+                text="請選擇想要訂票的方式",
+            actions=[
+                PostbackTemplateAction(
+                    label='單程票',
+                    text='單程票',
+                    data='action=buy&itemid=1'),
+                MessageTemplateAction(
+                    label='來回票',
+                    text='來回票')
+                ]))
+    return message
 
 
 def setOneWayTextMessege(step=0):
@@ -181,16 +234,23 @@ def confrimBook():
     message =TemplateSendMessage(
         alt_text='Confirm template',
         template=ConfirmTemplate(
-            text='''請確認''',
+            text='''請確認輸入資料是否有誤
+            身份證:{}
+            乘車日期:{}
+            車次代碼:{}
+            起站:{}
+            訖站:{}
+            票數:{}'''.format(identificationNumber,startDate,trainNumber,startStation,
+                endStation,thicketsNumber),
             actions=[
                 PostbackTemplateAction(
-                    label='postback',
-                    text='postback text',
+                    label='確認無誤',
+                    text='確認無誤',
                     data='action=buy&itemid=1'
                 ),
                  MessageTemplateAction(
-                    label='message',
-                    text='message text'
+                    label='輸入錯誤',
+                    text='輸入錯誤'
                 )
             ]
         )
