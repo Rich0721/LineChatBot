@@ -35,3 +35,8 @@ def checkTime(lastTime):
 	if (diff >=25):
 		return True
 	return False
+
+def checkHour(hour,hourDict):
+	if hourDict.__contains__(hour):
+		return True
+	return False
