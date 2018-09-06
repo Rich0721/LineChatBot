@@ -6,7 +6,8 @@ Describe: Line chat-bot reply message.
 ************************************************'''
 from linebot.models import(
 	MessageEvent, TextMessage, TextSendMessage, ImageSendMessage,
-    TemplateSendMessage, ConfirmTemplate,PostbackTemplateAction,MessageTemplateAction
+    TemplateSendMessage, ConfirmTemplate,PostbackTemplateAction,MessageTemplateAction,
+    ButtonsTemplate
 )
 
 def GreetingsMessage(step=0):
@@ -16,30 +17,21 @@ def GreetingsMessage(step=0):
     elif step == 2:
         message =TemplateSendMessage(
             alt_text = "訂票方式",
-            template= ConfirmTemplate(
+            template= ButtonsTemplate(
                 text="請選擇想要訂票的方式",
             actions=[
-                PostbackTemplateAction(
-                    label='車次',
-                    text='車次',
-                    data='action=buy&itemid=1'),
                 MessageTemplateAction(
-                    label='車種',
-                    text='車種')
-                ]))
-    elif step == 3:
-        message =TemplateSendMessage(
-            alt_text = "票種",
-            template= ConfirmTemplate(
-                text="請選擇想要訂票的方式",
-            actions=[
-                PostbackTemplateAction(
-                    label='單程票',
-                    text='單程票',
-                    data='action=buy&itemid=1'),
+                    label='單程-車次',
+                    text='單程-車次',),
                 MessageTemplateAction(
-                    label='來回票',
-                    text='來回票')
+                    label='單程-車種',
+                    text='單程-車種'),
+                MessageTemplateAction(
+                    label='來回-車次',
+                    text='來回-車次'),
+                MessageTemplateAction(
+                    label='來回-車種',
+                    text='來回-車種')
                 ]))
     return message
 
@@ -61,7 +53,7 @@ Step's significance
 ********************************************'''
 
 
-def setOneWayTextMessege(step=0):
+def bookTicketsMessege(step=0):
     if step == 1:
         message = TextSendMessage(text='''請告知我您的身份證字號，請按照格式輸入 EX:A123456789''')
     elif step == 2:
@@ -136,8 +128,8 @@ Step's significance
 4:Book return tickets when use train type.
 ********************************************'''
 
-def confrimBook(infromation,step=0):
-    if(step == 1):
+def confrimBook(infromation,choice=0):
+    if(choice == 1):
         message =TemplateSendMessage(
             alt_text='車次單程票確認',
             template=ConfirmTemplate(
@@ -163,7 +155,7 @@ def confrimBook(infromation,step=0):
                 ]
             )
         )
-    elif(step == 2):
+    elif(choice == 2):
         message =TemplateSendMessage(
             alt_text='車種單程票確認',
             template=ConfirmTemplate(
@@ -192,7 +184,7 @@ def confrimBook(infromation,step=0):
                 ]
             )
         )
-    elif(step == 3):
+    elif(choice == 3):
         message = TemplateSendMessage(
             alt_text="車次來回票確認",
             template=ConfirmTemplate(
@@ -219,7 +211,7 @@ def confrimBook(infromation,step=0):
                     ]
                 )
             )
-    elif(step == 4):
+    elif(choice == 4):
         message =TemplateSendMessage(
             alt_text='車種來回票確認',
             template=ConfirmTemplate(

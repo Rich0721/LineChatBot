@@ -14,13 +14,8 @@ def checkIdentificationNumber(id):
 		return True
 	return False
 
-def checkDate(date,dateDict):
-	if dateDict.__contains__(date):
-		return True
-	return False
-
-def checkStation(station, stationDict):
-	if stationDict.__contains__(station):
+def checkDict(data,Dict):
+	if Dict.__contains__(date):
 		return True
 	return False
 
@@ -33,10 +28,5 @@ def checkTime(lastTime):
 	current = time.strftime("%Y%m%d%H%M%S",time.localtime())
 	diff = int(current) - int(lastTime)
 	if (diff >=25):
-		return True
-	return False
-
-def checkHour(hour,hourDict):
-	if hourDict.__contains__(hour):
 		return True
 	return False

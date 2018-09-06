@@ -138,10 +138,10 @@ def bookOneWay(information,choice_train):
 	img = Image.open('tmp.png')
 	captcha = img.crop((62, 576, 62+250, 576+77))
 	captcha.convert("RGB").save('check.jpg', 'JPEG')
-	answer = confirmNumber()
+	#answer = confirmNumber()
 	
-	driver.find_element_by_id("randInput").send_keys(answer)
-	driver.find_element_by_id("sbutton").click()
+	#driver.find_element_by_id("randInput").send_keys(answer)
+	#driver.find_element_by_id("sbutton").click()
 
 	'''if "訂票成功" in driver.page_source:
 		soup = BeautifulSoup(driver.page_source,"lxml")
@@ -205,9 +205,9 @@ def bookRetrun(information,choice_train):
 	captcha.convert("RGB").save('check.jpg', 'JPEG')
 	answer = confirmNumber()
 	
-	driver.find_element_by_id("randInput").send_keys(answer)
-	driver.find_element_by_id("sbutton").click()
-	time.sleep(5)
+	#driver.find_element_by_id("randInput").send_keys(answer)
+	#driver.find_element_by_id("sbutton").click()
+	#time.sleep(5)
 
 	'''if "訂票成功" in driver.page_source:
 		soup = BeautifulSoup(driver.page_source,"lxml")
@@ -223,24 +223,6 @@ def bookRetrun(information,choice_train):
 
 	print('bookRetrun end.')
 
-information={
-	"id":"",
-	"startDate":"2018/09/06【四】",
-	"endDate":"2018/09/10【一】",
-	"goingStartHour":"09:00",
-	"goingEndHour":"10:00",
-	"backStartHour":"23:00",
-	"backEndHour":"23:59",
-	"goingTrain":"116",
-	"backTrain":"113",
-	"goingType":"1-自強號",
-	"backType":"2-莒光號",
-	"startStation":"185-高雄",
-	"endStation":"146-台中",
-	"ticketNumbers":"1"
-	}
 
-bookRetrun(information,choice_train=1)
 
-#bookOneWay(person_id="A123456789",date="2018/09/01",train_no=122,startStation="高雄",toStation="台北",ticketNumber=1)
 
