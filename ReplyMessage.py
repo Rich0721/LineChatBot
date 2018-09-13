@@ -13,12 +13,26 @@ from linebot.models import(
 def GreetingsMessage(step=0):
     
     if step == 1:
-        message = TextSendMessage(text="你好，我是台鐵訂票機器人，並不是官方機器人，如害怕個資洩漏，請至台鐵官網自行訂票")
+        message = TextSendMessage(text="你好，我是台鐵訂票機器人，並不是官方機器人，如害怕個資洩漏，請至台鐵官網自行訂票，\
+            請輸入 「Hi」或「你好」，將會提供你工作選項")
     elif step == 2:
+        message =TemplateSendMessage(
+            alt_text = "工作選項",
+            template= ButtonsTemplate(
+                text="請選擇想要的目的",
+            actions=[
+                MessageTemplateAction(
+                    label='已註冊',
+                    text='已註冊',),
+                MessageTemplateAction(
+                    label='未註冊',
+                    text='未註冊')
+                ]))
+    elif step == 3:
         message =TemplateSendMessage(
             alt_text = "訂票方式",
             template= ButtonsTemplate(
-                text="請選擇想要訂票的方式",
+                text="請選擇想要的訂票方式",
             actions=[
                 MessageTemplateAction(
                     label='單程-車次',
@@ -33,6 +47,18 @@ def GreetingsMessage(step=0):
                     label='來回-車種',
                     text='來回-車種')
                 ]))
+    return message
+
+def registerMessage(registedstep=0):
+    if registedstep == 1:
+        message = TextSendMessage(text="請告知我您的身份證字號")
+    elif registedstep == 2:
+        message = TextSendMessage(text='請輸入使用者名稱')
+    elif registedstep == 3:
+        message = TextSendMessage(text="註冊成功")
+    elif registedstep == 4:
+        message = TextSendMessage(text="id已存在，請重新輸入使用者名稱")
+
     return message
 
 
@@ -55,7 +81,7 @@ Step's significance
 
 def bookTicketsMessege(step=0):
     if step == 1:
-        message = TextSendMessage(text='''請告知我您的身份證字號，請按照格式輸入 EX:A123456789''')
+        message = TextSendMessage(text='''請告知我您註冊的使用者名稱，請按照格式輸入 EX:A123456789''')
     elif step == 2:
         message = TextSendMessage(text='''請告知我去程乘車的日期，請按照格式輸入 EX:2018/09/11''')
     elif step == 3:

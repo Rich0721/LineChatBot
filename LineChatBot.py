@@ -17,9 +17,7 @@ from linebot.models import (
 	)
 import os
 import time
-import checkData
-import BookTickets
-import ReplyMessage
+import checkData,BookTickets,ReplyMessage,ConnectDatabase
 
 # Creating Flask object
 app = Flask(__name__)
@@ -36,7 +34,7 @@ startHourDict = {}
 endHourDict = {}
 
 
-global information,choice,bookStep
+global information,choice,bookStep,registedStep,registedDict
 information={
     "id":"",
     "startDate":"",
@@ -53,6 +51,11 @@ information={
     "endStation":"",
     "ticketNumbers":""
     }
+
+registedDict = {
+    "id":"",
+    "userName":""
+}
 
 
 # Book date update.
@@ -85,15 +88,21 @@ def handle_message(event):
     
     today = time.strftime("%Y%m%d",time.localtime())
     updateDate(today)
-    global information,choice,bookStep
+    global information,choice,bookStep,registedStep,registedDict
 
-    if ((event.message.text  == "Hi") or event.message.text == "你好"):
-        line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=1))
-    if (("訂票" in event.message.text ) or ("訂車票" in event.message.text)):
+    if ((event.message.text  == "Hi") or (event.message.text == "你好")):
         line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=2))
+        registedStep = 1
         bookStep = 1
+    elif("已註冊" in event.message.text):
+        line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=3))
+    #else:
+    #    line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=1))
 
-    if("單程-車次" in event.message.text):
+    if("未註冊" in event.message.text):
+        line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=1))
+        registedStep = 2
+    elif("單程-車次" in event.message.text):
         choice = 1
     elif("單程-車種" in event.message.text):
         choice = 2
@@ -101,12 +110,22 @@ def handle_message(event):
         choice = 3
     elif("來回-車種" in event.message.text):
         choice = 4
-    
-    if((choice == 1) or (choice == 2)):
-        if(bookStep == 1):
-            line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessege(step=bookStep))
-            if checkData.checkIdentificationNumber(event.message.text):
-        elif(bookStep == 2):
+
+        
+    if(registedStep == 2):
+        registedDict['id'] = event.message.text
+        line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=registedStep))
+        registedStep = 3
+    elif registedStep == 3:
+        registedDict['userName'] = event.message.text
+        if ConnectDatabase.register(registedDict):
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=registedStep))
+            registedStep = 0
+            registedDict.clear()
+        else:
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=4))
+
+
 
     
 def updateDate(today):
@@ -118,9 +137,6 @@ def updateDate(today):
         restart = 1
         bookDate, station, startHourDict, endHourDict= BookTickets.BookDateAndStationData()
 
-def bookStepBool(bookStep):
-    if(bookStep == 1):
-
-if __name__ == "__main__":
+if  __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='127.0.0.1', port=port)
+    app.run(host='127.0.0.1', port=5000)
