@@ -10,7 +10,7 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 
 #connection
-conn = MongoClient('mongodb://<userName>:<password>@ds253922.mlab.com:53922/booktrain')
+conn = MongoClient('Url')
 db = conn.booktrain
 person_table = db.person
 favorite_table = db.favorite
