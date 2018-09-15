@@ -10,24 +10,25 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 
 #connection
-conn = MongoClient('Url')
+
 db = conn.booktrain
 person_table = db.person
 favorite_table = db.favorite
 
 def register(data):
+	person_table.insert_one(data)
+
+def confirmeID(data):
 	id_exist = person_table.find_one({'userName':data['userName']})
-	print(data,id_exist)
 	if id_exist == None:
-		person_table.insert_one(data)
 		return True
 	return False
 
 def searchID(data):
-	id_exist = person_table.find_one(data)
+	id_exist = person_table.find_one({'userName':data})
 	if id_exist != None:
-		return id_exist['person_id']
-	return None
+		return True
+	return False
 
 def FavroiteExsit(data):
 	exist = favorite_table.find_one(data)

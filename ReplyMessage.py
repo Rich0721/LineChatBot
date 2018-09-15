@@ -22,8 +22,8 @@ def GreetingsMessage(step=0):
                 text="請選擇想要的目的",
             actions=[
                 MessageTemplateAction(
-                    label='已註冊',
-                    text='已註冊',),
+                    label='訂票去',
+                    text='訂票去',),
                 MessageTemplateAction(
                     label='未註冊',
                     text='未註冊')
@@ -66,33 +66,35 @@ def registerMessage(registedstep=0):
 Step's significance
 1:ID. 
 2:Going date.
-3:Back date.
-4:Going date's start hour.
-5:Going date's end hour.
-6:Back date's start hour.
-7:Back date's end hour.
-8:Train number.
-9:Train type.
-10:Start staition.
-11:Destination station.
-12:Tickets.
+3:Start staition.
+4:Destination station.
+5:Going Train type.
+6:Going date's start hour.
+7:Going date's end hour.
+8:Going Train number.
+9:Going Ticket's numbers.
+
+If user book return tickets.
+10:Back date.
+11:Back Train type.
+12:Back date's start hour.
+13:Back date's end hour.
+14:Back Train number.
+15:Back Ticket's numbers.
+
 ********************************************'''
 
 
-def bookTicketsMessege(step=0):
+def bookTicketsMessage(step=0):
     if step == 1:
-        message = TextSendMessage(text='''請告知我您註冊的使用者名稱，請按照格式輸入 EX:A123456789''')
+        message = TextSendMessage(text='''請告知我您註冊的使用者名稱''')
     elif step == 2:
         message = TextSendMessage(text='''請告知我去程乘車的日期，請按照格式輸入 EX:2018/09/11''')
     elif step == 3:
-        message = TextSendMessage(text='''請告知我回程乘車的日期，請按照格式輸入 EX:2018/09/11''')
-    elif((step == 4) or (step == 6)):
-        message = TextMessage(text='''欲搭乘時間範圍的開始時間，請以整點為單位 EX:0900''')
-    elif((step == 5) or (step == 7)) :
-        message = TextMessage(text='''欲搭乘時間範圍的結束時間，請以整點為單位，最晚時間到23:59 EX:0900''')    
-    elif step == 8:
-        message = TextSendMessage(text='''請告知我您欲搭乘的車次代碼，請按照格式輸入 EX:122''')
-    elif step == 9 :
+        message = TextSendMessage(text='''請告知我您的起站 EX:台北''')
+    elif step == 4:
+        message = TextSendMessage(text='''請告知我您的訖站 EX:台北''')
+    elif step == 5 :
         message = TemplateSendMessage(
             alt_text = "車種確認",
             template = ConfirmTemplate(
@@ -107,43 +109,47 @@ def bookTicketsMessege(step=0):
                         text="2-莒光號")
                 ]
                 )
-            )
-    elif step == 10:
-        message = TextSendMessage(text='''請告知我您的起站 EX:台北''')
-    elif step == 11:
-        message = TextSendMessage(text='''請告知我您的訖站 EX:台北''')
-    elif step == 12:
+            )    
+    elif((step == 6) or (step == 12)):
+        message = TextMessage(text='''欲搭乘時間範圍的開始時間，請以整點為單位 EX:0900''')
+    elif((step == 7) or (step == 13)) :
+        message = TextMessage(text='''欲搭乘時間範圍的結束時間，請以整點為單位，最晚時間到23:59 EX:0900''')    
+    elif ((step == 8) or (step == 14)):
+        message = TextSendMessage(text='''請告知我您欲搭乘的車次代碼，請按照格式輸入 EX:122''')
+    elif ((step == 9) or (step == 15)):
         message = TextSendMessage(text='''請告知您的訂票數 EX:1 (如超過6張票以上，請分兩次訂票)''')
+    elif step == 10:
+        message = TextSendMessage(text='''請告知我回程乘車的日期，請按照格式輸入 EX:2018/09/11''')
+    
+    
     
     
     return message
 
-def errorMesserge(step=0):
-	if(step == 1):
-		message = TextSendMessage(text="身份證字號錯誤，請重新輸入")
-	elif(step == 2):
-		message = TextSendMessage(text="去程日期錯誤，請重新輸入")
-	elif(step == 3):
-		message = TextSendMessage(text="回程日期錯誤，請重新輸入")
-	elif(step == 4):
-		message = TextSendMessage(text="去程起始時間錯誤，請重新輸入")
-	elif(step == 5):
-		message = TextSendMessage(text="去程截止時間錯誤，請重新輸入")
-	elif(step == 6):
-		message = TextSendMessage(text="回程起始時間錯誤，請重新輸入")
-	elif(step == 7):
-		message = TextSendMessage(text="回程截止時間錯誤，請重新輸入")
-	elif(step == 9):
-		message = TextSendMessage(text="請按選擇鈕!")
-	elif(step == 10):
-		message = TextSendMessage(text="起站別錯誤，請檢查名稱是否有錯字")
-	elif(step == 11):
-		message = TextSendMessage(text="訖站別錯誤，請檢查名稱是否有錯字")
-	elif(step == 12):
-		message =  TextSendMessage(text="每次訂票的數量至多六張喔~")
-	
-
-	return message
+def errorMessage(step=0):  
+    if(step == 1):
+        message = TextSendMessage(text="使用者名稱錯誤，請重新輸入")
+    elif(step == 2):
+        message = TextSendMessage(text="去程日期錯誤，請重新輸入")
+    elif(step == 3):
+        message = TextSendMessage(text="起站別錯誤，請檢查名稱是否有錯字")
+    elif(step == 4):
+        message = TextSendMessage(text="訖站別錯誤，請檢查名稱是否有錯字")
+    elif((step == 5) or (step == 11)):
+        message = TextSendMessage(text="請按選擇鈕!")
+    elif(step == 6):
+        message = TextSendMessage(text="去程起始時間錯誤，請重新輸入")
+    elif(step == 7):
+        message = TextSendMessage(text="去程截止時間錯誤，請重新輸入")
+    elif((step == 9) or (step == 15)):
+        message = TextSendMessage(text="每次訂票的數量至多六張喔~")
+    elif(step == 10):
+        message = TextSendMessage(text="回程日期錯誤，請重新輸入")
+    elif(step == 12):
+        message = TextSendMessage(text="回程起始時間錯誤，請重新輸入")
+    elif(step == 13):
+        message = TextSendMessage(text="回程截止時間錯誤，請重新輸入")
+    return message
 
 
 '''********************************************
@@ -152,6 +158,7 @@ Step's significance
 2:Book one-way tickets when use train type.
 3:Book return tickets when use train numbers.
 4:Book return tickets when use train type.
+5:Confrim register's data whether correct.
 ********************************************'''
 
 def confrimBook(infromation,choice=0):
@@ -195,8 +202,8 @@ def confrimBook(infromation,choice=0):
             --------------
             {}→{}
             票數:{}'''.format(infromation['id'],infromation['startDate'],infromation['goingStartHour'],
-                    infromation['goingEndHour'],infromation['goingType'],infromation['startStation'],infromation['endStation'],
-                    infromation['thicketNumbers']),
+                    infromation['goingEndHour'],infromation['goingTrain'],infromation['startStation'],infromation['endStation'],
+                    infromation['goingthicketNumbers']),
                 actions=[
                     PostbackTemplateAction(
                         label='開始訂票',
@@ -219,14 +226,16 @@ def confrimBook(infromation,choice=0):
                 --------------
                 去程日期:{}
                 車次代碼:{}
+                票數:{}
                 --------------
                 回程日期:{}
                 車次代碼:{}
+                票數:{}
                 --------------
                 {}→{}
-                票數:{}'''.format(infromation['id'],infromation['startDate'],infromation['goingTrain'],
-                    infromation['endDate'],infromation['backTrain'],infromation['startStation'],infromation['endStation'],
-                    infromation['thicketNumbers']),
+                '''.format(infromation['id'],infromation['startDate'],infromation['goingTrain'],infromation['goingthicketNumbers'],
+                    infromation['endDate'],infromation['backTrain'],infromation['backthicketNumbers'],
+                    infromation['startStation'],infromation['endStation']),
                 actions=[
                     MessageTemplateAction(
                         label="開始訂票",
@@ -248,17 +257,19 @@ def confrimBook(infromation,choice=0):
             去程起始時間:{}
             去程截止時間:{}
             去程車種:{}
+            票數:{}
             ---------------
             回程日期:{}
             回程起始時間:{}
             回程截止時間:{}
             回程車種:{}
+            票數:{}
             ---------------
-            {}→{}
-            票數:{}'''.format(infromation['id'],infromation['startDate'],infromation['goingStartHour'],
-                    infromation['goingEndHour'],infromation['goingType'],infromation['endDate'],infromation['backStartHour'],
-                    infromation['backEndHour'],infromation['backType'],infromation['startStation'],infromation['endStation'],
-                    infromation['thicketNumbers']),
+            {}→{}'''.format(infromation['id'],infromation['startDate'],infromation['goingStartHour'],
+                    infromation['goingEndHour'],infromation['goingTrain'],infromation['goingthicketNumbers'],
+                    infromation['endDate'],infromation['backStartHour'],
+                    infromation['backEndHour'],infromation['backTrain'],infromation['backthicketNumbers'],
+                    infromation['startStation'],infromation['endStation']),
                 actions=[
                     PostbackTemplateAction(
                         label='開始訂票',
@@ -272,4 +283,22 @@ def confrimBook(infromation,choice=0):
                 ]
             )
         )
+    elif(choice == 5):
+        message = TemplateSendMessage(
+            alt_text="註冊訊息確認",
+            template=ConfirmTemplate(
+                text = '''請確認輸入註冊資料
+                身份證:{}
+                使用者名稱:{}'''.format(infromation['id'],infromation['userName']),
+                actions=[
+                    PostbackTemplateAction(
+                        label="確認無誤",
+                        text="確認無誤",
+                        data='action=buy&itemid=1'),
+                    MessageTemplateAction(
+                        label='輸入錯誤',
+                        text="輸入錯誤")
+                ]
+                )
+            )
     return message
