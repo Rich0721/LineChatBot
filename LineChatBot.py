@@ -17,14 +17,14 @@ from linebot.models import (
 	)
 import os
 import time
-import checkData,BookTickets,ReplyMessage,ConnectDatabase
+import checkData,ReplyMessage,ConnectDatabase
+from BookTickets import BookDateAndStationData
 
 # Creating Flask object
 app = Flask(__name__)
 
 #Token
-CHANNEL_ACCESS_TOKEN = "CP3lJUZTyFc8pA4hV5aS7nIUxtzbEyE+YVyU8XuA1lakCjxMQtw8XxydWQU8SZtGYF9No+vjod+dFnKNuVU86HtKem2wTwQOUeI8cSQK/wCMjA4LfzQEwHHrBHJ4rTQFiZdFGKtFaccXwFD5eMlU4wdB04t89/1O/w1cDnyilFU="
-CHANNEL_SECRET = "828d49983f0de27995c84fbbf00c20f8"
+
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
@@ -36,10 +36,12 @@ startHourDict = {}
 endHourDict = {}
 
 
-global information,choice,bookStep,registedStep,registedDict
+global information,choice,bookStep,registedStep,registedDict,searchBool
+searchBool = False
 information = {}
 registedDict = {}
-
+registedStep = 0
+choice = 0
 
 # Book date update.
 global restart
@@ -71,40 +73,54 @@ def handle_message(event):
     
     today = time.strftime("%Y%m%d",time.localtime())
     updateDate(today)
-    global information,choice,bookStep,registedStep,registedDict
+    global information,choice,bookStep,registedStep,registedDict,searchBool
     backup = {}
+
     # Step-1: User choice what does he(she) doing now.
     if ((event.message.text  == "Hi") or (event.message.text == "你好")):
         line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=2))
-        registedStep = 1
+        
         choice = 0
     elif("訂票去" in event.message.text):
         line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=3))
         bookStep = 1
-        registedStep = 0
-        choice = 0
-
-    elif(("未註冊" in event.message.text) or (registedStep == 1)):
+    elif ("未註冊" in event.message.text):
+        registedStep = 1
         line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=1))
         registedStep = 2
         choice = 0
-    # Registered id step.
-    elif(registedStep == 2):
-        registedDict['id'] = event.message.text
-        line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=registedStep))
-        registedStep = 3
+    elif ("查詢訂票" in event.message.text):
+        line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=1))
+        searchBool = True
+    elif searchBool:
+        temp = ConnectDatabase.searchReserveData(event.message.text)
+        if temp['success']:
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='''取票號碼:{},\
+             發車時間:{},取票時間:{}'''.format(temp['book_number'],temp['ride_up_date'],temp["pick_up_deadling"])))
+        else:
+            if temp['times'] == 6:
+                line_bot_api.reply_message(event.reply_token,TextSendMessage(text="沒有空位"))
+            else:
+                line_bot_api.reply_message(event.reply_token,TextSendMessage(text="訂票失敗"))
+        searchBool = False
+    elif(registedStep == 2):# Registered id step.
+        if ConnectDatabase.confirmeUserName(data=event.message.text):
+            registedDict['id'] = event.message.text
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=registedStep))
+            registedStep = 3
+        else:
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=4))
     elif registedStep == 3:
-        if ConnectDatabase.confirmeID(registedDict):
+        if ConnectDatabase.confirmeUserName(event.message.text):
             registedDict['userName'] = event.message.text
             line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=registedDict,choice=5))
             registedStep = 4
         else:
-            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=4))
-            registedstep = 3
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=5))
     elif registedStep == 4:
         if("確認無誤" in event.message.text):
             ConnectDatabase.register(registedDict)
-            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=registedStep))
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=3))
             registedStep = 0
             registedDict.clear()
         elif("輸入錯誤" in event.message.text):
@@ -154,14 +170,14 @@ def handle_message(event):
         elif((bookStep == 3) or (bookStep == 11)):
 
             if(bookStep == 3):
-                if (int(today) <= int(check.replace('/',''))):
+                if (int(today) <= int(event.message.text.replace('/',''))):
                     information["startDate"] = event.message.text
                     line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
                     bookStep = 4
                 else:
                     line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=bookStep-1))
             else:
-                if(int(event.message.text.replace('/','')) < int(information['startDate'].replace('/',''))):
+                if(int(event.message.text.replace('/','')) >= int(information['startDate'].replace('/',''))):
                     information["endDate"] = event.message.text
                     if(choice == 3):
                         line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=14))
@@ -263,32 +279,33 @@ def handle_message(event):
                 information['id'] = ConnectDatabase.returnIdentification(information['id'])
                 if ((choice == 1) or (choice == 2)):
                     if bookDate.__contains__(information['startDate']):
-                        information['startDate'] = bookDate[information['startDate']]
-                        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂票'))
+                        
+                        information['reserve'] = choice
+                        ConnectDatabase.insertOneWayData(data=information)
+                        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂票，請至查詢訂票查詢'))
+
                     else:
                         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='預約訂票'))
-                        if choice == 1:
-                            information['resver'] = 1
-                        else:
-                            information['resver'] = 2
+                        information['reserve'] = choice
                         ConnectDatabase.insertOneWayData(data=information)
                 else:
-                    if (bookDate.__contains__(information['startDate']) and bookDate.__contains__(information['endDate'])):
-                        information['startDate'] = bookDate[information['startDate']]
-                        information['endDate'] = bookDate[information['endDate']]
-                        going,back =  breakUpReturnData(information=information,choice=choice,Reserve=True)
-
-                        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂票'))
-                    elif bookDate.__contains__(information['startDate']):
-                        information['startDate'] = bookDate[information['startDate']]
-                        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='回程預約訂票'))
+                    if ((bookDate.__contains__(information['startDate'])) and (bookDate.__contains__(information['endDate']))):
                         
-                        backup = backupInfromation(information,choice=choice)
-                       
-                        ConnectDatabase.insertOneWayData(data=backup)
+
+                        going,back =  breakUpReturnData(information=information,choice=choice)
+                        ConnectDatabase.insertOneWayData(data=going)
+                        ConnectDatabase.insertOneWayData(data=back)
+                        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂票，請至查詢訂票查詢'))
+
+                    elif bookDate.__contains__(information['startDate']):
+                        going,back =  breakUpReturnData(information=information,choice=choice)
+                        ConnectDatabase.insertOneWayData(data=going)
+                        ConnectDatabase.insertOneWayData(data=back)
+                        line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂去程票，回程票將幫您使用預約訂票，請至查詢訂票查詢'))
+
                     else:
                         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='都實施預約訂票'))
-                        going,back =  breakUpReturnData(information=information,choice=choice,Reserve=True)
+                        going,back =  breakUpReturnData(information=information,choice=choice)
                         ConnectDatabase.insertOneWayData(data=going)
                         ConnectDatabase.insertOneWayData(data=back)
 
@@ -306,9 +323,10 @@ def updateDate(today):
     if ((update != today) or (restart == 0)):
         today = update
         restart = 1
-        bookDate, station, startHourDict, endHourDict= BookTickets.BookDateAndStationData()
+        bookDate, station, startHourDict, endHourDict= BookDateAndStationData()
 
 
+# If back date need to resver, return data  need to back up then store. 
 def backupInfromation(information, choice):
     backup = {}
     backup['startDate'] = information['endDate']
@@ -318,16 +336,17 @@ def backupInfromation(information, choice):
     backup['endStation'] = information['startStation']
     if choice == 3:
         backup['goingTrain'] = information['backTrain']
-        backup['resver'] = 1
+        backup['reserve'] = 1
     else:
         backup['goingType'] = infromation['backType']
         backup['goingStartHour'] = information['backStartHour']
         backup['goingEndHour'] = information['backEndHour']
-        backup['resver'] = 2
+        backup['reserve'] = 2
 
     return backup
 
-def breakUpReturnData(information,choice,Reserve=False):
+# Break up data to one-way formal.
+def breakUpReturnData(information,choice):
     
     goInfor = {}
     backInfor = {}
@@ -356,9 +375,9 @@ def breakUpReturnData(information,choice,Reserve=False):
         backInfor['goingStartHour'] = information['backStartHour']
         backInfor['goingEndHour'] = information['backEndHour']
 
-    if Reserve:
-        goInfor['resver'] = int(choice/2)
-        backInfor['resver'] = int(choice/2)
+    
+    goInfor['reserve'] = int(choice/2)
+    backInfor['reserve'] = int(choice/2)
     return goInfor,backInfor
         
 

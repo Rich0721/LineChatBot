@@ -14,11 +14,6 @@ def checkIdentificationNumber(id):
 		return True
 	return False
 
-def checkDict(data,Dict):
-	if Dict.__contains__(date):
-		return True
-	return False
-
 def checkTicketsNumbers(num):
 	if ((num>=1) and (num<=6)):
 		return True
@@ -27,6 +22,6 @@ def checkTicketsNumbers(num):
 def checkTime(lastTime):
 	current = time.strftime("%Y%m%d%H%M%S",time.localtime())
 	diff = int(current) - int(lastTime)
-	if (diff >=25):
+	if (diff >= 30):
 		return True
 	return False
