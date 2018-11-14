@@ -10,10 +10,12 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 
 #connection
+
 db = conn.booktrain
 person_table = db.person
 oneway_table = db.oneway
 reserve_table = db.reserve
+temp_table = db.temp
 
 def register(data):
 	person_table.insert_one(data)
@@ -60,5 +62,15 @@ def ReserveData(data,store=False,delete=False):
 		reserve_table.delete_many({"pick_up_deadling":data})
 
 def searchReserveData(data):
-	return reserve_table.find_one({'userName':data})
+	return reserve_table.find_one_and_delete({'userName':data})
 
+def LineIDExist(data):
+	return temp_table.find_one({'LineID':data})
+
+def renewStep(information,update=False,insert=False):
+	if update:
+		temp_table.update_one({"LineID":information["LineID"]},{ "$set":information})
+	elif insert:
+		temp_table.insert_one(information)
+	else:
+		temp_table.delete_one({"LineID":information["LineID"]})

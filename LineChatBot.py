@@ -19,11 +19,12 @@ import os
 import time
 import checkData,ReplyMessage,ConnectDatabase
 from BookTickets import BookDateAndStationData
+from Cutting_dict import cutRegisted, breakUpReturnData, backupInfromation
+
 
 # Creating Flask object
 app = Flask(__name__)
 
-#Token
 
 
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
@@ -73,26 +74,32 @@ def handle_message(event):
     
     today = time.strftime("%Y%m%d",time.localtime())
     updateDate(today)
-    global information,choice,bookStep,registedStep,registedDict,searchBool
+    global choice,bookStep,registedStep,registedDict,searchBool
+    information = {}
     backup = {}
 
-    # Step-1: User choice what does he(she) doing now.
-    if ((event.message.text  == "Hi") or (event.message.text == "你好")):
+    if ConnectDatabase.LineIDExist(data=event.source.user_id) != None:
+        information = ConnectDatabase.LineIDExist(data=event.source.user_id)
+    elif ConnectDatabase.LineIDExist(data=event.source.user_id) == None:
         line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=2))
-        
-        choice = 0
-    elif("訂票去" in event.message.text):
+        information['LineID'] = event.source.user_id
+        information['registedStep'] = 0
+        information['choice'] = 0
+        information['bookStep'] = 0
+        information['searchBool'] = False
+        ConnectDatabase.renewStep(information=information,insert=True)
+
+    if("訂票去" in event.message.text):
         line_bot_api.reply_message(event.reply_token, ReplyMessage.GreetingsMessage(step=3))
-        bookStep = 1
+        information['bookStep'] = 1
+        ConnectDatabase.renewStep(information=information,update=True)
     elif ("未註冊" in event.message.text):
-        registedStep = 1
         line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=1))
-        registedStep = 2
-        choice = 0
+        information['registedStep'] = 2
     elif ("查詢訂票" in event.message.text):
         line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=1))
-        searchBool = True
-    elif searchBool:
+        information['searchBool'] = True
+    elif information['searchBool']:
         temp = ConnectDatabase.searchReserveData(event.message.text)
         if temp['success']:
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text='''取票號碼:{},\
@@ -100,42 +107,44 @@ def handle_message(event):
         else:
             if temp['times'] == 6:
                 line_bot_api.reply_message(event.reply_token,TextSendMessage(text="沒有空位"))
-            else:
+            elif temp['times'] == 5:
                 line_bot_api.reply_message(event.reply_token,TextSendMessage(text="訂票失敗"))
-        searchBool = False
-    elif(registedStep == 2):# Registered id step.
+            else:
+                line_bot_api.reply_message(event.reply_token,TextSendMessage(text="沒有訂票資料"))
+        ConnectDatabase.renewStep(information=information)
+    elif(information['registedStep'] == 2):# Registered id step.
         if ConnectDatabase.confirmeUserName(data=event.message.text):
-            registedDict['id'] = event.message.text
-            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=registedStep))
-            registedStep = 3
+            information['id'] = event.message.text
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=information['registedStep']))
+            information['registedStep'] = 3
         else:
             line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=4))
-    elif registedStep == 3:
+    elif information['registedStep'] == 3:
         if ConnectDatabase.confirmeUserName(event.message.text):
-            registedDict['userName'] = event.message.text
-            line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=registedDict,choice=5))
-            registedStep = 4
+            information['userName'] = event.message.text
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=information,choice=5))
+            information['registedStep'] = 4
         else:
             line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=5))
-    elif registedStep == 4:
+    elif information['registedStep'] == 4:
         if("確認無誤" in event.message.text):
+            registedDict = {}
+            registedDict = cutRegisted(information)
             ConnectDatabase.register(registedDict)
             line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=3))
-            registedStep = 0
-            registedDict.clear()
+            ConnectDatabase.renewStep(information=information)
         elif("輸入錯誤" in event.message.text):
             line_bot_api.reply_message(event.reply_token,ReplyMessage.registerMessage(registedstep=1))
-            registedstep = 1
-
-
+            information['registedStep'] = 1
+    print(information)
     if("單程-車次" in event.message.text):
-        choice = 1
+        information['choice'] = 1
     elif("單程-車種" in event.message.text):
-        choice = 2
+        information['choice'] = 2
     elif("來回-車次" in event.message.text):
-        choice = 3
+        information['choice'] = 3
     elif("來回-車種" in event.message.text):
-        choice = 4
+        information['choice'] = 4
 
     '''*****************************
     bookStep 1: Key in registered ID.
@@ -156,166 +165,163 @@ def handle_message(event):
     ******************************'''
 
 
-    if((choice >= 1) and (choice <= 4)):
-        if(bookStep == 1):
-            line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-            bookStep = 2
-        elif(bookStep == 2):
+    if((information['choice'] >= 1) and (information['choice'] <= 4)):
+        if(information['bookStep'] == 1):
+            line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+            information['bookStep'] = 2
+        elif(information['bookStep'] == 2):
             if ConnectDatabase.searchID(event.message.text):
                 information['id'] = event.message.text
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                bookStep = 3
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                information['bookStep'] = 3
             else:
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(bookStep-1)))
-        elif((bookStep == 3) or (bookStep == 11)):
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(information['bookStep']-1)))
+        elif((information['bookStep'] == 3) or (information['bookStep'] == 11)):
 
-            if(bookStep == 3):
+            if(information['bookStep'] == 3):
                 if (int(today) <= int(event.message.text.replace('/',''))):
                     information["startDate"] = event.message.text
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                    bookStep = 4
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                    information['bookStep'] = 4
                 else:
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=bookStep-1))
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=information['bookStep']-1))
             else:
                 if(int(event.message.text.replace('/','')) >= int(information['startDate'].replace('/',''))):
                     information["endDate"] = event.message.text
-                    if(choice == 3):
+                    if(information['choice'] == 3):
                         line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=14))
-                        bookStep = 14
+                        information['bookStep'] = 14
                     else:
-                        line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                        bookStep = 12
+                        line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                        information['bookStep'] = 12
                 else:
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=bookStep-1))   
-        elif(bookStep == 4):
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=information['bookStep']-1))   
+        elif(information['bookStep'] == 4):
             if station.__contains__(event.message.text):
                 information['startStation'] = station[event.message.text]
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                if((choice == 2) or (choice == 4)):
-                    bookStep = 5
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                if((information['choice'] == 2) or (information['choice'] == 4)):
+                    information['bookStep'] = 5
                 else:
-                    bookStep = 8
+                    information['bookStep'] = 8
             else:
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(bookStep-1)))
-        elif(bookStep == 5):
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(information['bookStep']-1)))
+        elif(information['bookStep'] == 5):
             if station.__contains__(event.message.text):
                 information['endStation'] = station[event.message.text]
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                bookStep = 6
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                information['bookStep'] = 6
             else:
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(bookStep-1)))
-        elif((bookStep == 6) or (bookStep == 12)):
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(information['bookStep']-1)))
+        elif((information['bookStep'] == 6) or (information['bookStep'] == 12)):
             if(("1-自強號" in event.message.text) or ("2-莒光號" in event.message.text)):
-                if(bookStep == 6):
+                if(information['bookStep'] == 6):
                     information['goingType'] = event.message.text
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                    bookStep = 7
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                    information['bookStep'] = 7
                 else:
                     information['backType'] = event.message.text
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                    bookStep = 13
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                    information['bookStep'] = 13
             else:
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(bookStep-1)))
-        elif((bookStep == 7) or (bookStep == 13)):
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(information['bookStep']-1)))
+        elif((information['bookStep'] == 7) or (information['bookStep'] == 13)):
             if startHourDict.__contains__(event.message.text):
-                if(bookStep == 7):
+                if(information['bookStep'] == 7):
                     information['goingStartHour'] = startHourDict[event.message.text]
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                    bookStep = 9
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                    information['bookStep'] = 9
                 else:
                     information["backStartHour"] = startHourDict[event.message.text]
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                    bookStep = 14
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                    information['bookStep'] = 14
             else:
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(bookStep-1)))
-        elif(bookStep == 8):
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(information['bookStep']-1)))
+        elif(information['bookStep'] == 8):
             if station.__contains__(event.message.text):
                 information['endStation'] = station[event.message.text]
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                bookStep = 9
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                information['bookStep'] = 9
             else:
                 line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=4))
-        elif((bookStep == 9) or (bookStep == 14)):
-            if((choice == 2) or (choice == 4)):
+        elif((information['bookStep'] == 9) or (information['bookStep'] == 14)):
+            if((information['choice'] == 2) or (information['choice'] == 4)):
                 if (endHourDict.__contains__(event.message.text)):
-                    if((bookStep == 9) and (endHourDict[event.message.text] != information['goingStartHour'])):
+                    if((information['bookStep'] == 9) and (endHourDict[event.message.text] != information['goingStartHour'])):
                         information['goingEndHour'] = endHourDict[event.message.text]
-                        line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                        bookStep = 10
-                    elif((bookStep == 14) and (endHourDict[event.message.text] != information['backStartHour'])):
+                        line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                        information['bookStep'] = 10
+                    elif((information['bookStep'] == 14) and (endHourDict[event.message.text] != information['backStartHour'])):
                         information['backEndHour'] =  endHourDict[event.message.text]
-                        line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=information,choice=choice))
-                        bookStep = 15
+                        line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=information,choice=information['choice']))
+                        information['bookStep'] = 15
                     else:
                         line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=7))    
                 else:
                     line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=7))
 
             else:
-                if(bookStep == 9):
+                if(information['bookStep'] == 9):
                     information['goingTrain'] = event.message.text
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                    bookStep = 10
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                    information['bookStep'] = 10
                 else:
                     information['backTrain'] = event.message.text
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=information,choice=choice))
-                    bookStep = 15
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=information,choice=information['choice']))
+                    information['bookStep'] = 15
 
-        elif(bookStep == 10):
+        elif(information['bookStep'] == 10):
             if checkData.checkTicketsNumbers(int(event.message.text)):
                 information['goingticketNumbers'] = event.message.text
-                if((choice==1) or (choice==2)):
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=information,choice=choice))
-                    bookStep = 15
+                if((information['choice']==1) or (information['choice']==2)):
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.confrimBook(infromation=information,choice=information['choice']))
+                    information['bookStep'] = 15
                 else:
-                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=bookStep))
-                    bookStep = 11
+                    line_bot_api.reply_message(event.reply_token,ReplyMessage.bookTicketsMessage(step=information['bookStep']))
+                    information['bookStep'] = 11
             else:
-                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(bookStep-1)))
+                line_bot_api.reply_message(event.reply_token,ReplyMessage.errorMessage(step=(information['bookStep']-1)))
         #If checke is not error, program automatically distinguish booking-date whether can book.
         #If it can book then book, store to database.
-        elif(bookStep == 15):
+        elif(information['bookStep'] == 15):
             if "確認無誤" in event.message.text:
                 information['id'] = ConnectDatabase.returnIdentification(information['id'])
-                if ((choice == 1) or (choice == 2)):
+                if ((information['choice'] == 1) or (information['choice'] == 2)):
                     if bookDate.__contains__(information['startDate']):
-                        
-                        information['reserve'] = choice
+                        information['reserve'] = information['choice']
                         ConnectDatabase.insertOneWayData(data=information)
                         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂票，請至查詢訂票查詢'))
-
                     else:
                         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='預約訂票'))
-                        information['reserve'] = choice
+                        information['reserve'] = information['choice']
                         ConnectDatabase.insertOneWayData(data=information)
                 else:
                     if ((bookDate.__contains__(information['startDate'])) and (bookDate.__contains__(information['endDate']))):
-                        
-
-                        going,back =  breakUpReturnData(information=information,choice=choice)
+                        going,back =  breakUpReturnData(information=information,choice=information['choice'])
                         ConnectDatabase.insertOneWayData(data=going)
                         ConnectDatabase.insertOneWayData(data=back)
                         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂票，請至查詢訂票查詢'))
 
                     elif bookDate.__contains__(information['startDate']):
-                        going,back =  breakUpReturnData(information=information,choice=choice)
+                        going,back =  breakUpReturnData(information=information,choice=information['choice'])
                         ConnectDatabase.insertOneWayData(data=going)
                         ConnectDatabase.insertOneWayData(data=back)
                         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='馬上幫您訂去程票，回程票將幫您使用預約訂票，請至查詢訂票查詢'))
-
                     else:
                         line_bot_api.reply_message(event.reply_token,TextSendMessage(text='都實施預約訂票'))
-                        going,back =  breakUpReturnData(information=information,choice=choice)
+                        going,back =  breakUpReturnData(information=information,choice=information['choice'])
                         ConnectDatabase.insertOneWayData(data=going)
                         ConnectDatabase.insertOneWayData(data=back)
-
-                bookStep = 0
-                choice = 0
-                information.clear()
+                ConnectDatabase.renewStep(information=information)
             else:
-                bookStep = 1
+                information['bookStep'] = 1
 
+    if ((information['bookStep'] >= 1) and (information['bookStep'] <=15)):
+        ConnectDatabase.renewStep(information=information,update=True)
+    elif ((information['registedStep'] >= 1) and (information['registedStep'] <= 4)):
+        ConnectDatabase.renewStep(information=information,update=True)
     
+
 def updateDate(today):
 
     global station,bookDate,startHourDict,endHourDict,restart
@@ -324,63 +330,6 @@ def updateDate(today):
         today = update
         restart = 1
         bookDate, station, startHourDict, endHourDict= BookDateAndStationData()
-
-
-# If back date need to resver, return data  need to back up then store. 
-def backupInfromation(information, choice):
-    backup = {}
-    backup['startDate'] = information['endDate']
-    backup['id'] = information['id']
-    backup['goingticketNumbers'] = information['goingticketNumbers']
-    backup['startStation'] = information['endStation']
-    backup['endStation'] = information['startStation']
-    if choice == 3:
-        backup['goingTrain'] = information['backTrain']
-        backup['reserve'] = 1
-    else:
-        backup['goingType'] = infromation['backType']
-        backup['goingStartHour'] = information['backStartHour']
-        backup['goingEndHour'] = information['backEndHour']
-        backup['reserve'] = 2
-
-    return backup
-
-# Break up data to one-way formal.
-def breakUpReturnData(information,choice):
-    
-    goInfor = {}
-    backInfor = {}
-
-    goInfor['id'] = information['id']
-    goInfor['startDate'] = information['startDate']
-    goInfor['goingticketNumbers'] = information['goingticketNumbers']
-    goInfor['startStation'] = information['startStation']
-    goInfor['endStation'] = information['endStation']
-
-    backInfor['id'] = information['id']
-    backInfor['startDate'] = information['endDate']
-    backInfor['goingticketNumbers'] = information['goingticketNumbers']
-    backInfor['startStation'] = information['endStation']
-    backInfor['endStation'] = information['startStation']
-
-    if choice == 3:
-        goInfor['goingTrain'] = information['goingTrain']
-        backInfor['goingTrain'] = information['backTrain']
-    else:
-        goInfor['goingType'] = information['goingType']
-        goInfor['goingStartHour'] = information['goingStartHour']
-        goInfor['goingEndHour'] = information['goingEndHour']
-
-        backInfor['goingType'] = information['backType']
-        backInfor['goingStartHour'] = information['backStartHour']
-        backInfor['goingEndHour'] = information['backEndHour']
-
-    
-    goInfor['reserve'] = int(choice/2)
-    backInfor['reserve'] = int(choice/2)
-    return goInfor,backInfor
-        
-
 
 if  __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
