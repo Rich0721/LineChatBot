@@ -58,7 +58,21 @@ def registerMessage(registedstep=0):
     elif registedstep == 2:
         message = TextSendMessage(text='請輸入使用者名稱')
     elif registedstep == 3:
-        message = TextSendMessage(text="註冊成功")
+        message =TemplateSendMessage(
+            alt_text = "工作選項",
+            template= ButtonsTemplate(
+                text="註冊成功，請選擇工作項目",
+            actions=[
+                MessageTemplateAction(
+                    label='訂票去',
+                    text='訂票去',),
+                MessageTemplateAction(
+                    label='未註冊',
+                    text='未註冊'),
+                MessageTemplateAction(
+                    label='查詢訂票',
+                    text='查詢訂票')
+                ]))
     elif registedstep == 4:
         message = TextSendMessage(text="身份證字號已存在，請重新輸入身份證字號")
     elif registedstep == 5:
@@ -154,6 +168,62 @@ def errorMessage(step=0):
         message = TextSendMessage(text="回程截止時間錯誤，請重新輸入")
     return message
 
+
+def replyMessageMenu(Immed=True,oneWay=True):
+
+	if (Immed):
+		message =TemplateSendMessage(
+			alt_text = "工作選項",
+			template= ButtonsTemplate(
+			text="馬上幫您訂票，請選擇工作項目",
+			actions=[
+			MessageTemplateAction(
+				label='訂票去',
+				text='訂票去',),
+			MessageTemplateAction(
+				label='未註冊',
+				text='未註冊'),
+			MessageTemplateAction(
+				label='查詢訂票',
+				text='查詢訂票')
+		]))
+	elif((not Immed) and (oneWay)):
+		message =TemplateSendMessage(
+			alt_text = "工作選項",
+			template= ButtonsTemplate(
+			text="去程馬上幫您訂票，回程採用預約訂票，請選擇工作項目",
+			actions=[
+			MessageTemplateAction(
+				label='訂票去',
+				text='訂票去',),
+			MessageTemplateAction(
+				label='未註冊',
+				text='未註冊'),
+			MessageTemplateAction(
+				label='查詢訂票',
+				text='查詢訂票')
+		]))
+	elif((not Immed) and (not oneWay)):
+		message =TemplateSendMessage(
+			alt_text = "工作選項",
+			template= ButtonsTemplate(
+			text="預約訂票，請選擇工作項目",
+			actions=[
+			MessageTemplateAction(
+				label='訂票去',
+				text='訂票去',),
+			MessageTemplateAction(
+				label='未註冊',
+				text='未註冊'),
+			MessageTemplateAction(
+				label='查詢訂票',
+				text='查詢訂票')
+		]))
+
+	return message
+
+
+
 '''********************************************
 Step's significance
 1:Book one-way tickets when use train numbers.
@@ -218,7 +288,7 @@ def confrimBook(infromation,choice=0):
         message = TemplateSendMessage(
             alt_text="車次來回票確認",
             template=ConfirmTemplate(
-                text='''
+                text='''請確認輸入資料是否有誤
                 ID:{}
                 {}
                 {}
@@ -244,7 +314,7 @@ def confrimBook(infromation,choice=0):
             alt_text='車種來回票確認',
             template=ConfirmTemplate(
                 text='''請確認輸入資料是否有誤
-            {}
+            ID:{}
             {}
             {}
             {}

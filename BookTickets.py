@@ -27,9 +27,9 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 
 global model5,model6,model56
-model5 = load_model("D:/專題/爬蟲/TrainCodeImage/Program/real_5_2.h5")
+model5 = load_model("real_5.h5")
 model6 = load_model("D:/專題/爬蟲/TrainCodeImage/Program/real_6_2.h5")
-model56 = load_model("D:/專題/爬蟲/TrainCodeImage/Program/real_56_2.h5")
+model56 = load_model("real_56.h5")
 
 
 

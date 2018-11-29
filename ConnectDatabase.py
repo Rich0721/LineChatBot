@@ -74,3 +74,6 @@ def renewStep(information,update=False,insert=False):
 		temp_table.insert_one(information)
 	else:
 		temp_table.delete_one({"LineID":information["LineID"]})
+
+def Overtime(time):
+	temp_table.delete_many({"exit":time})
