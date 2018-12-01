@@ -15,6 +15,7 @@ from datetime import datetime
 from datetime import timedelta
 import ConnectDatabase
 from BookTickets import bookOneWay
+import threading
 
 
 def BookDate():
@@ -33,79 +34,57 @@ def BookDate():
 	driver.close()
 	return dateDict,dateList
 
+def threadJob(today,date):
+	store = {}
+	while today == datetime.now().strftime("%Y%m%d"):
+		print(date)
+		information = ConnectDatabase.searchOneWayData(date)
+		if information != None:
+			information['startDate'] = date
+			data, times = bookOneWay(information=information,choice_train=information['reserve'])
+			store['userName'] = ConnectDatabase.returnUserName(information['id'])
+			if len(data):
+				store['book_number'] = data[0]
+				store['ride_up_date'] = data[1]
+				store["pick_up_deadling"] = data[2]
+				store['success'] = True
+			else:
+				store['pick_up_deadling'] = ((datetime.now()) + timedelta(days=2)).strftime("%Y%m%d")
+				store['success'] = False
+			store['times'] = times
+			ConnectDatabase.ReserveData(store,store=True)
+			store.clear()
+
+
+def constructThread(today,dateList,dateDict,varx):
+	threads = []
+	for i in range(len(dateList)-varx):
+		threads.append(threading.Thread(target=threadJob, args=(today,dateDict[dateList[i]],)))
+		threads[i].start()
+
+	for i in range(len(dateList)-varx):
+		threads[i].join()
+	print("Done threads at 23:00~00:00")
+
 def main():
 	flag = True
-	reserve = []
-	open = True
-	week = ["Sun","Mon","Tue","Web"] # These day of week update a day.
-	store = {}
+	boot = True
 	today = datetime.now().strftime("%Y%m%d")
-	read = True
 
 	while(flag):
-		if open:
+		if boot:
 			dateDict,dateList = BookDate()
-			open = False
+			boot = False
 		elif "23:00" == datetime.now().strftime("%H:%M"):
 			dateDict,dateList = BookDate()
-			
-			read = True
-			if datetime.now().strftime("%a") in week:
-				while read:
-					temp = ConnectDatabase.searchOneWayData(dateList[-1])
-					if temp != None:
-						reserve.append(temp)
-					else:
-						read = False
-			elif "Thu" == datetime.now().strftime("%a"):
-				for i in range(3):
-					read = True
-					while read:
-						temp = ConnectDatabase.searchOneWayData(dateList[i-1])
-						if temp != None:
-							reserve.append(temp)
-						else:
-							read = False
-			time.sleep(60)
-			print(reserve)
-		elif today != datetime.now().strftime("%Y%m%d"):
-			today = datetime.now().strftime("%Y%m%d")
-			if len(reserve):
-				for ReserveData in reserve:
-					ReserveData['startDate'] = dateDict[ReserveData['startDate']]
-					data, times = bookOneWay(information=ReserveData,choice_train=ReserveData['reserve'])
-					store['userName'] = ConnectDatabase.returnUserName(ReserveData['id'])
-					print(store)
-					if len(data):
-						store['book_number'] = data[0]
-						store['ride_up_date'] = data[1]
-						store["pick_up_deadling"] = data[2]
-						store['success'] = True
-					else:
-						store['pick_up_deadling'] = ((datetime.now()) + timedelta(days=2)).strftime("%Y%m%d")
-						store['success'] = False
-					store['times'] = times
-					ConnectDatabase.ReserveData(store,store=True)
-			ConnectDatabase.ReserveData(today,delete=True)
-			reserve.clear()
-			print(read)
+
+			if (datetime.now().strftime("%a") == "Thu"):
+				constructThread(today=today, dateList=dateList, dateDict=dateDict, varx=2)
+			elif (datetime.now().strftime("%a") == "Fri"):
+				constructThread(today=today, dateList=dateList, dateDict=dateDict, varx=1)
+			else:
+				constructThread(today=today, dateList=dateList, dateDict=dateDict, varx=0)
 		else:
-			for date in dateList:
-				information = ConnectDatabase.searchOneWayData(date)
-				if information != None:
-					information['startDate'] = dateDict[information['startDate']]
-					data, times = bookOneWay(information=information,choice_train=information['reserve'])
-					store['userName'] = ConnectDatabase.returnUserName(information['id'])
-					if len(data):
-						store['book_number'] = data[0]
-						store['ride_up_date'] = data[1]
-						store["pick_up_deadling"] = data[2]
-						store['success'] = True
-					else:
-						store['pick_up_deadling'] = ((datetime.now()) + timedelta(days=2)).strftime("%Y%m%d")
-						store['success'] = False
-					store['times'] = times
-					ConnectDatabase.ReserveData(store,store=True)
-					store.clear()
+			constructThread(today=today, dateList=dateList, dateDict=dateDict, varx=0)
 
 main()
